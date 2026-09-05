@@ -1,0 +1,70 @@
+package com.example.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// Tailwind Palette Colors
+val Slate950 = Color(0xFF020617)
+val Slate900 = Color(0xFF0F172A)
+val Slate800 = Color(0xFF1E293B)
+val Slate700 = Color(0xFF334155)
+val Slate600 = Color(0xFF475569)
+val Slate500 = Color(0xFF64748B)
+val Slate400 = Color(0xFF94A3B8)
+val Slate300 = Color(0xFFCBD5E1)
+val Slate200 = Color(0xFFE2E8F0)
+val Slate100 = Color(0xFFF1F5F9)
+val Slate50 = Color(0xFFF8FAFC)
+
+// Primary Indigo
+val Indigo600 = Color(0xFF4F46E5)
+val Indigo500 = Color(0xFF6366F1)
+val Indigo700 = Color(0xFF4338CA)
+val Indigo800 = Color(0xFF3730A3)
+val Indigo900 = Color(0xFF312E81)
+val Indigo300 = Color(0xFFA5B4FC)
+val Indigo200 = Color(0xFFC7D2FE)
+val Indigo100 = Color(0xFFE0E7FF)
+val Indigo50 = Color(0xFFEEF2FF)
+
+// Accents
+val Emerald300 = Color(0xFF6EE7B7)
+val Emerald400 = Color(0xFF34D399)
+val Emerald500 = Color(0xFF10B981)
+val Emerald600 = Color(0xFF059669)
+val Emerald700 = Color(0xFF047857)
+val Emerald800 = Color(0xFF065F46)
+val Emerald200 = Color(0xFFA7F3D0)
+val Emerald100 = Color(0xFFD1FAE5)
+val Emerald50 = Color(0xFFECFDF5)
+
+val Amber300 = Color(0xFFFCD34D)
+val Amber400 = Color(0xFFFBBF24)
+val Amber500 = Color(0xFFF59E0B)
+val Amber600 = Color(0xFFD97706)
+val Amber700 = Color(0xFFB45309)
+val Amber800 = Color(0xFF92400E)
+val Amber900 = Color(0xFF78350F)
+val Amber50 = Color(0xFFFFFBEB)
+val Amber100 = Color(0xFFFEF3C7)
+
+val Sky500 = Color(0xFF0EA5E9)
+val Sky600 = Color(0xFF0284C7)
+val Sky400 = Color(0xFF38BDF8)
+val Sky300 = Color(0xFF7DD3FC)
+val Sky200 = Color(0xFFBAE6FD)
+val Sky100 = Color(0xFFE0F2FE)
+val Sky900 = Color(0xFF0C4A6E)
+val Sky50 = Color(0xFFF0F9FF)
+
+val Rose200 = Color(0xFFFECDD3)
+val Rose100 = Color(0xFFFFE4E6)
+val Rose300 = Color(0xFFFDA4AF)
+val Rose400 = Color(0xFFFB7185)
+val Rose500 = Color(0xFFEF4444)
+val Rose600 = Color(0xFFDC2626)
+val Rose700 = Color(0xFFB91C1C)
+val Rose800 = Color(0xFF991B1B)
+val Rose50 = Color(0xFFFEF2F2)
+
+val Violet500 = Color(0xFF8B5CF6)
+val Violet50 = Color(0xFFF5F3FF)

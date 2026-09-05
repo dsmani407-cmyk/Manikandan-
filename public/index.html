@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Group Command Center - Tranz India Dealer</title>
+  
+  <!-- Viewport optimized for Google Pixel 11 (Safe area insets, no pinch zoom lag) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- PWA Settings -->
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Smart Group">
+  <meta name="description" content="Smart Group Command Center for Tranz India Authorized Dealers. Real-time leads, seniority sales tracker, and field call offline caching.">
+
+  <!-- Icons & Manifest -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- Native Splash Screen -->
+  <div id="splash-screen">
+    <div class="splash-logo-box">
+      <svg width="64" height="64" viewBox="0 0 512 512">
+        <path d="M 256,76 L 396,140 L 396,280 C 396,370 256,436 256,436 C 256,436 116,370 116,280 L 116,140 Z"
+              fill="rgba(255,255,255,0.1)" stroke="#818cf8" stroke-width="12"/>
+        <text x="256" y="290" font-family="sans-serif" font-size="140" font-weight="900" fill="#ffffff" text-anchor="middle">SG</text>
+      </svg>
+    </div>
+    <div class="splash-title">SMART GROUP</div>
+    <div class="splash-badge">Tranz India Authorized Dealer</div>
+    <div class="splash-loader">
+      <div class="splash-loader-fill"></div>
+    </div>
+  </div>
+
+  <!-- App Root -->
+  <div id="app-root">
+    <!-- Google Pixel Safe Top Status Bar Pad -->
+    <div class="pixel-status-bar"></div>
+
+    <!-- App Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-icon">SG</div>
+        <div class="brand-titles">
+          <span class="brand-name">Smart Group</span>
+          <span class="brand-tag">TRANZ INDIA DEALER</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Role Switcher -->
+        <button id="btn-role-selector" class="role-pill-btn" title="Switch User Role">
+          <span id="header-role-label">Distributor</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M7 10l5 5 5-5z"/>
+          </svg>
+        </button>
+
+        <!-- Theme Toggle (Field Sales Dark vs Office Light) -->
+        <button id="btn-theme-toggle" class="icon-btn" title="Toggle Field Sales Mode">
+          <svg id="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg id="theme-icon-moon" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <!-- Notification Bell -->
+        <button id="btn-notifications" class="icon-btn" title="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span id="header-notif-badge" class="notif-badge-count">2</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chrome PWA Install Prompt Banner for Pixel 11 -->
+    <div id="install-banner" class="hidden">
+      <div class="install-text">
+        <span class="install-title">Install Smart Group App</span>
+        <span class="install-sub">Direct Home Screen access on Google Pixel</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:6px;">
+        <button id="btn-install-pwa" class="install-btn">Install on Pixel</button>
+        <button id="btn-install-dismiss" class="install-close">✕</button>
+      </div>
+    </div>
+
+    <!-- Offline & Room Local Cache Bar -->
+    <div id="cache-bar" class="offline-cache-bar">
+      <div class="cache-info-left">
+        <div class="cache-dot"></div>
+        <div>
+          <div class="cache-status-title">
+            <span id="cache-status-text">Room Cache Active</span>
+            <span id="cache-status-badge" class="cache-tag">CACHED</span>
+          </div>
+          <div id="cache-metrics-text" class="cache-status-sub">
+            Room SQLite: 8 leads • 6 sales cached for field calls
+          </div>
+        </div>
+      </div>
+      <div class="cache-actions">
+        <button id="btn-toggle-offline" class="btn-small">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 1l22 22"></path>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+            <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+          <span id="lbl-offline-toggle">Simulate Offline</span>
+        </button>
+        <button id="btn-sync-cache" class="btn-small" title="Sync Cache">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Viewport for Screens -->
+    <main id="main-viewport" class="main-viewport">
+      <!-- Dynamically populated by app.js based on active tab -->
+    </main>
+
+    <!-- Bottom Navigation Bar (Optimized for single-thumb touch on Google Pixel 11) -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="9"></rect>
+          <rect x="14" y="3" width="7" height="5"></rect>
+          <rect x="14" y="12" width="7" height="9"></rect>
+          <rect x="3" y="16" width="7" height="5"></rect>
+        </svg>
+        <span class="nav-label">Command</span>
+      </button>
+
+      <button class="nav-item" data-tab="leads">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span class="nav-label">Leads</span>
+        <span id="nav-leads-badge" class="nav-badge">3</span>
+      </button>
+
+      <button class="nav-item" data-tab="visits">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span class="nav-label">Visits</span>
+      </button>
+
+      <button class="nav-item" data-tab="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"></path>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+        </svg>
+        <span class="nav-label">Tasks</span>
+      </button>
+
+      <button class="nav-item" data-tab="sales">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"></line>
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+        <span class="nav-label">Sales</span>
+      </button>
+
+      <button class="nav-item" data-tab="teams">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+        <span class="nav-label">Teams</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Global Modal Container -->
+  <div id="modal-container" class="modal-overlay">
+    <div class="modal-sheet" id="modal-sheet-content">
+      <!-- Injected by app.js -->
+    </div>
+  </div>
+
+  <!-- Global Toast Snackbar -->
+  <div id="toast"></div>
+
+  <!-- Application Logic -->
+  <script src="/app.js"></script>
+
+  <!-- Service Worker Registration for PWA on Google Pixel 11 -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => {
+            console.log('Smart Group ServiceWorker registered:', reg.scope);
+          })
+          .catch((err) => {
+            console.warn('ServiceWorker registration error:', err);
+          });
+      });
+    }
+
+    // Chrome "Add to Home screen" install prompt handler
+    let deferredPrompt;
+    const installBanner = document.getElementById('install-banner');
+    const btnInstall = document.getElementById('btn-install-pwa');
+    const btnDismiss = document.getElementById('btn-install-dismiss');
+
+    // Check if running in standalone mode (already installed on Pixel)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    if (!isStandalone) {
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBanner.classList.remove('hidden');
+      });
+    }
+
+    btnInstall.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      installBanner.classList.add('hidden');
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('User response to install prompt:', outcome);
+      deferredPrompt = null;
+    });
+
+    btnDismiss.addEventListener('click', () => {
+      installBanner.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>

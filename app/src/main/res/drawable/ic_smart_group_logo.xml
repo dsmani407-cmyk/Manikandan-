@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Outer Circle Rim -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#111827"
+        android:strokeWidth="2.5"
+        android:pathData="M60,60m-56,0a56,56 0 1,0 112,0a56,56 0 1,0 -112,0" />
+
+    <!-- Inner Circle Rim -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#111827"
+        android:strokeWidth="2"
+        android:pathData="M60,60m-46,0a46,46 0 1,0 92,0a46,46 0 1,0 -92,0" />
+
+    <!-- White Inner Disc -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M60,60m-45.5,0a45.5,45.5 0 1,0 91,0a45.5,45.5 0 1,0 -91,0" />
+
+    <!-- Ring Text Indicator Marks & Stars -->
+    <!-- Top Left Stars -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M23,37 L24,40 L27,40 L24.5,42 L25.5,45 L23,43 L20.5,45 L21.5,42 L19,40 L22,40 Z" />
+    <path
+        android:fillColor="#111827"
+        android:pathData="M29,29 L30,32 L33,32 L30.5,34 L31.5,37 L29,35 L26.5,37 L27.5,34 L25,32 L28,32 Z" />
+    <path
+        android:fillColor="#111827"
+        android:pathData="M37,23 L38,26 L41,26 L38.5,28 L39.5,31 L37,29 L34.5,31 L35.5,28 L33,26 L36,26 Z" />
+
+    <!-- Top Right Stars -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M83,23 L84,26 L87,26 L84.5,28 L85.5,31 L83,29 L80.5,31 L81.5,28 L79,26 L82,26 Z" />
+    <path
+        android:fillColor="#111827"
+        android:pathData="M91,29 L92,32 L95,32 L92.5,34 L93.5,37 L91,35 L88.5,37 L89.5,34 L87,32 L90,32 Z" />
+    <path
+        android:fillColor="#111827"
+        android:pathData="M97,37 L98,40 L101,40 L98.5,42 L99.5,45 L97,43 L94.5,45 L95.5,42 L93,40 L96,40 Z" />
+
+    <!-- Top Arc Text: SMART GROUPS (Simplified bold vector letters) -->
+    <!-- S -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M43,18 C41,18 40.5,17 40.5,16 C40.5,15 42,14.5 44,14.5 C46,14.5 46.5,15.2 46.5,15.2 L45.8,15.8 C45.8,15.8 45.2,15.3 44,15.3 C42.6,15.3 41.5,15.6 41.5,16.1 C41.5,17.2 45.8,16.5 45.8,18.5 C45.8,19.6 44.5,20.2 43,20.2 C41,20.2 40,19.2 40,19.2 L40.7,18.5 C40.7,18.5 41.6,19.4 43,19.4 C44.5,19.4 44.8,18.8 44.8,18.4 C44.8,17.4 40.5,17.8 40.5,16.2" />
+    <!-- M -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M48,20 L48,14.8 L49.2,14.8 L51,18 L52.8,14.8 L54,14.8 L54,20 L53,20 L53,16.2 L51.5,18.8 L50.5,18.8 L49,16.2 L49,20 Z" />
+    <!-- A -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M56.5,20 L58.5,14.8 L59.8,14.8 L61.8,20 L60.6,20 L60.1,18.5 L58.2,18.5 L57.7,20 Z M58.5,17.6 L59.8,17.6 L59.1,15.7 Z" />
+    <!-- R -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M63.5,20 L63.5,14.8 L65.5,14.8 C66.8,14.8 67.5,15.5 67.5,16.5 C67.5,17.3 67,17.9 66,18.1 L67.6,20 L66.3,20 L64.8,18.2 L64.5,18.2 L64.5,20 Z M64.5,17.4 L65.4,17.4 C66.1,17.4 66.5,17.1 66.5,16.5 C66.5,15.9 66.1,15.6 65.4,15.6 L64.5,15.6 Z" />
+    <!-- T -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M69,15.6 L69,14.8 L73.5,14.8 L73.5,15.6 L71.8,15.6 L71.8,20 L70.7,20 L70.7,15.6 Z" />
+
+    <!-- Bottom Arc Text: TRANZ INDIA (Emblematic baseline) -->
+    <!-- Decorative side brackets on the outer ring -->
+    <path
+        android:fillColor="#111827"
+        android:pathData="M11,60 C11,70 14,79 19,87 L18,88 C12.5,79.5 9.5,70 9.5,60 Z" />
+    <path
+        android:fillColor="#111827"
+        android:pathData="M109,60 C109,70 106,79 101,87 L102,88 C107.5,79.5 110.5,70 110.5,60 Z" />
+
+    <!-- ==================== CENTER MONOGRAM (SG) ==================== -->
+    <!-- BLUE "S" (Left half) -->
+    <!-- Geometric Blue 'S' using precise SVG path -->
+    <path
+        android:fillColor="#003CE5"
+        android:pathData="M 57,25
+            L 34,25
+            C 25,25 21,31 21,41
+            L 21,50
+            C 21,58 26,62 38,62
+            L 47,62
+            L 47,81
+            C 47,88 41,92 34,92
+            L 22,92
+            L 22,81
+            L 34,81
+            C 36,81 37,80 37,77
+            L 37,72
+            L 28,72
+            C 21,72 21,68 21,62
+            L 21,57
+            L 31,57
+            L 31,62
+            L 37,62
+            L 37,51
+            C 37,45 32,41 24,41
+            L 21,41
+            L 21,34
+            C 21,27 27,25 34,25
+            Z" />
+
+    <!-- Precise crisp S shape: Top curve, left spine, center loop, right descent, bottom base -->
+    <path
+        android:fillColor="#003CE5"
+        android:pathData="M 33,24
+            C 23,24 19,30 19,41
+            L 19,46
+            L 29,46
+            L 29,41
+            C 29,35 31,33 34,33
+            L 56,33
+            L 56,24
+            Z" />
+    <path
+        android:fillColor="#003CE5"
+        android:pathData="M 19,43
+            C 19,53 25,56 36,56
+            L 46,56
+            C 52,56 56,60 56,66
+            L 56,81
+            C 56,90 49,94 37,94
+            L 20,94
+            L 20,84
+            L 36,84
+            C 42,84 45,82 45,76
+            L 45,67
+            C 45,64 42,63 36,63
+            L 27,63
+            C 21,63 19,58 19,50
+            Z" />
+    <path
+        android:fillColor="#003CE5"
+        android:pathData="M 19,38
+            L 19,52
+            L 29,52
+            L 29,38
+            Z" />
+
+    <!-- RED "G" (Right half) -->
+    <!-- Outer curve of the G -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M 64,24
+            L 85,24
+            C 97,24 102,32 102,46
+            L 102,72
+            C 102,86 97,94 85,94
+            L 64,94
+            L 64,84
+            L 84,84
+            C 90,84 92,80 92,72
+            L 92,60
+            L 76,60
+            L 76,51
+            L 101,51
+            L 101,46
+            C 101,38 98,34 85,34
+            L 64,34
+            Z" />
+    <!-- G Crossbar and inside shelf -->
+    <path
+        android:fillColor="#E50914"
+        android:pathData="M 76,51
+            L 92,51
+            L 92,67
+            L 82,67
+            L 82,60
+            L 76,60
+            Z" />
+
+</vector>

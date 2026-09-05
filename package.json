@@ -1,0 +1,9 @@
+{
+  "name": "smart-group-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo build ok"
+  }
+}

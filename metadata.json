@@ -1,0 +1,6 @@
+{
+  "name": "Smart Group",
+  "description": "Smart Group Command Center - Mobile-first Progressive Web App (PWA) for Tranz India Authorized Dealers with field call offline caching, leads pipeline, and daily task closing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

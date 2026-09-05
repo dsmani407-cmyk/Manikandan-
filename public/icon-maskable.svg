@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#3730a3"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full bleed background for maskable icon -->
+  <rect width="512" height="512" fill="url(#bgGrad)"/>
+
+  <!-- Centered emblem within 80% safe zone -->
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#6366f1" stroke-width="3" stroke-dasharray="6 6" opacity="0.35"/>
+
+  <!-- Center Shield polygon -->
+  <path d="M 256,110 L 366,160 L 366,270 C 366,340 256,395 256,395 C 256,395 146,340 146,270 L 146,160 Z"
+        fill="url(#shieldGrad)" stroke="#818cf8" stroke-width="5"/>
+
+  <!-- Star -->
+  <path d="M 256,142 L 261,154 L 274,154 L 263,162 L 267,175 L 256,167 L 245,175 L 249,162 L 238,154 L 251,154 Z" fill="url(#goldGrad)"/>
+
+  <!-- SG Monogram -->
+  <text x="256" y="270" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="94" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="-3">
+    SG
+  </text>
+
+  <!-- Subtitle Tag inside shield -->
+  <rect x="176" y="300" width="160" height="28" rx="14" fill="#fbbf24"/>
+  <text x="256" y="319" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="12" font-weight="900" fill="#0f172a" text-anchor="middle" letter-spacing="1">
+    SMART GROUP
+  </text>
+
+  <text x="256" y="348" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="11" font-weight="700" fill="#93c5fd" text-anchor="middle" letter-spacing="1.5">
+    TRANZ INDIA
+  </text>
+</svg>
