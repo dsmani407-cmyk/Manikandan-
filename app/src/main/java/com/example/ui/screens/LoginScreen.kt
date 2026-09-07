@@ -32,6 +32,12 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.CrmViewModel
 import com.example.ui.theme.*
+import kotlinx.coroutines.launch
+
+enum class LoginTab {
+    SIGN_IN,
+    REGISTER
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,18 +45,34 @@ fun LoginScreen(
     viewModel: CrmViewModel,
     modifier: Modifier = Modifier
 ) {
+    var selectedTab by remember { mutableStateOf(LoginTab.SIGN_IN) }
+
+    // Sign in fields
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+
+    // Registration fields
+    var regName by remember { mutableStateOf("") }
+    var regEmail by remember { mutableStateOf("") }
+    var regPhone by remember { mutableStateOf("") }
+    var regPassword by remember { mutableStateOf("") }
+    var regPasswordVisible by remember { mutableStateOf(false) }
+    var regTeamId by remember { mutableStateOf("team-1") }
+    var regTeamName by remember { mutableStateOf("Alpha Warriors") }
+
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
 
-    val members by viewModel.members.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val teams by viewModel.teams.collectAsState()
+    val cloudSyncStatus by viewModel.cloudSyncStatus.collectAsState()
     val focusManager = LocalFocusManager.current
 
     fun performLogin() {
         if (userId.isBlank()) {
-            errorMessage = "Please enter your User ID or Distributor ID"
+            errorMessage = "Please enter your registered Email or User ID"
             return
         }
         if (password.isBlank()) {
@@ -59,10 +81,50 @@ fun LoginScreen(
         }
         isSubmitting = true
         errorMessage = null
-        val (success, err) = viewModel.login(userId, password)
-        isSubmitting = false
-        if (!success) {
-            errorMessage = err ?: "Invalid credentials. Please try again."
+        successMessage = null
+        coroutineScope.launch {
+            val (success, err) = viewModel.loginAsync(userId.trim(), password.trim())
+            isSubmitting = false
+            if (!success) {
+                errorMessage = err ?: "Invalid credentials. Please verify your Email/User ID and password."
+            }
+        }
+    }
+
+    fun performRegistration() {
+        if (regName.isBlank()) {
+            errorMessage = "Please enter your full distributor name"
+            return
+        }
+        if (regEmail.isBlank() || !regEmail.contains("@")) {
+            errorMessage = "Please enter a valid email address"
+            return
+        }
+        if (regPhone.isBlank()) {
+            errorMessage = "Please enter your phone number"
+            return
+        }
+        if (regPassword.length < 6) {
+            errorMessage = "Password must be at least 6 characters"
+            return
+        }
+
+        isSubmitting = true
+        errorMessage = null
+        successMessage = null
+        coroutineScope.launch {
+            val (success, err) = viewModel.registerDistributor(
+                email = regEmail.trim(),
+                pass = regPassword.trim(),
+                name = regName.trim(),
+                phone = regPhone.trim(),
+                teamId = regTeamId,
+                teamName = regTeamName
+            )
+            isSubmitting = false
+            if (!success) {
+                errorMessage = err ?: "Registration failed. Please try again."
+            }
         }
     }
 
@@ -70,6 +132,9 @@ fun LoginScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Slate900)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .testTag("login_screen"),
         contentAlignment = Alignment.Center
     ) {
@@ -84,7 +149,7 @@ fun LoginScreen(
             // Logo & Header
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(76.dp)
                     .clip(CircleShape)
                     .background(Color.White)
                     .padding(6.dp),
@@ -93,11 +158,11 @@ fun LoginScreen(
                 Image(
                     painter = painterResource(id = R.drawable.ic_smart_group_logo),
                     contentDescription = "Smart Group Logo",
-                    modifier = Modifier.size(68.dp)
+                    modifier = Modifier.size(64.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 text = "Smart Group",
@@ -115,15 +180,15 @@ fun LoginScreen(
             )
 
             Text(
-                text = "Enterprise Management & CRM Portal",
-                fontSize = 11.sp,
+                text = "Central Supabase CRM • Multi-Device Portal",
+                fontSize = 11.5.sp,
                 color = Slate400,
                 modifier = Modifier.padding(top = 2.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Login Card
+            // Main Auth Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
@@ -132,39 +197,74 @@ fun LoginScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(22.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
+                    // Central Database & RLS Security Status Banner
+                    Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        color = Emerald50,
+                        shape = RoundedCornerShape(8.dp)
                     ) {
-                        Column {
-                            Text(
-                                text = "Sign In to App",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Slate900
-                            )
-                            Text(
-                                text = "Admin or Individual Distributor Login",
-                                fontSize = 12.sp,
-                                color = Slate500
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Indigo50)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "SECURE",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Indigo600
+                            Icon(
+                                Icons.Default.CloudDone,
+                                contentDescription = null,
+                                tint = Emerald600,
+                                modifier = Modifier.size(18.dp)
                             )
+                            Column {
+                                Text(
+                                    text = "Central Supabase Database Connected",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Emerald700
+                                )
+                                Text(
+                                    text = "Multi-device CRM with Row Level Security (RLS) data isolation",
+                                    fontSize = 10.5.sp,
+                                    color = Slate600
+                                )
+                            }
                         }
+                    }
+
+                    // Tabs: Sign In vs Register Distributor
+                    TabRow(
+                        selectedTabIndex = selectedTab.ordinal,
+                        containerColor = Slate100,
+                        contentColor = Indigo600,
+                        modifier = Modifier.clip(RoundedCornerShape(10.dp))
+                    ) {
+                        Tab(
+                            selected = selectedTab == LoginTab.SIGN_IN,
+                            onClick = {
+                                selectedTab = LoginTab.SIGN_IN
+                                errorMessage = null
+                            },
+                            text = {
+                                Text(
+                                    "Sign In",
+                                    fontWeight = if (selectedTab == LoginTab.SIGN_IN) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
+                        Tab(
+                            selected = selectedTab == LoginTab.REGISTER,
+                            onClick = {
+                                selectedTab = LoginTab.REGISTER
+                                errorMessage = null
+                            },
+                            text = {
+                                Text(
+                                    "Register Distributor",
+                                    fontWeight = if (selectedTab == LoginTab.REGISTER) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        )
                     }
 
                     // Error Alert
@@ -198,256 +298,245 @@ fun LoginScreen(
                         }
                     }
 
-                    // User ID Field
-                    OutlinedTextField(
-                        value = userId,
-                        onValueChange = {
-                            userId = it
-                            errorMessage = null
-                        },
-                        label = { Text("User ID / Username") },
-                        placeholder = { Text("admin or distributor ID") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = Indigo600)
-                        },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_login_user_id"),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Password Field
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = {
-                            password = it
-                            errorMessage = null
-                        },
-                        label = { Text("Password") },
-                        placeholder = { Text("Enter password") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = Indigo600)
-                        },
-                        trailingIcon = {
-                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                                    tint = Slate400
-                                )
-                            }
-                        },
-                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_login_password"),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Password,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                focusManager.clearFocus()
-                                performLogin()
-                            }
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-
-                    // Login Button
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            performLogin()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("btn_login_submit"),
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
-                        shape = RoundedCornerShape(10.dp),
-                        enabled = !isSubmitting
-                    ) {
-                        if (isSubmitting) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Sign In",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    // Session tracking notification note
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = Slate400,
-                            modifier = Modifier.size(14.dp)
-                        )
+                    if (selectedTab == LoginTab.SIGN_IN) {
+                        // Sign In Form
                         Text(
-                            text = "Individual last login and current login timestamps will be recorded.",
-                            fontSize = 11.sp,
+                            text = "Enter your individual credentials to access your phone's CRM session:",
+                            fontSize = 11.5.sp,
                             color = Slate500
                         )
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Security & Privacy Card (Confidential Distributor Logins)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate800)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Indigo900),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = Indigo300,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "Confidential Distributor Security",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Data isolation & role-based credentials",
-                                fontSize = 10.sp,
-                                color = Slate400
-                            )
-                        }
-                    }
-
-                    // Strict Security Notice
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Slate900.copy(alpha = 0.6f)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = Amber400,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text(
-                                    text = "Private Distributor Logins",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Amber300
-                                )
-                            }
-                            Text(
-                                text = "Each team member's login credentials and data are strictly private. No other team member can view or access your login details. Only the Super Admin has full administrative visibility across all accounts.",
-                                fontSize = 11.sp,
-                                color = Slate300,
-                                lineHeight = 15.sp
-                            )
-                        }
-                    }
-
-                    // Admin Quick Access Button (for administrative evaluation)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Slate700)
-                            .clickable {
-                                userId = "admin"
-                                password = "admin123"
+                        // User ID / Email Field
+                        OutlinedTextField(
+                            value = userId,
+                            onValueChange = {
+                                userId = it
                                 errorMessage = null
+                            },
+                            label = { Text("Email or User ID") },
+                            placeholder = { Text("e.g. distributor@smartgroup.com") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = Indigo600)
+                            },
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_login_user_id"),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        // Password Field
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it
+                                errorMessage = null
+                            },
+                            label = { Text("Password") },
+                            placeholder = { Text("Enter account password") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Lock, contentDescription = null, tint = Indigo600)
+                            },
+                            trailingIcon = {
+                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                    Icon(
+                                        imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                        tint = Slate400
+                                    )
+                                }
+                            },
+                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_login_password"),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    performLogin()
+                                }
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        // Sign In Button
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                performLogin()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("btn_login_submit"),
+                            colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                            shape = RoundedCornerShape(10.dp),
+                            enabled = !isSubmitting
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Sign In",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                        }
+
+                        // Info note on security and isolation
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(top = 2.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clip(CircleShape)
-                                    .background(Amber500),
-                                contentAlignment = Alignment.Center
+                            Icon(
+                                Icons.Default.Shield,
+                                contentDescription = null,
+                                tint = Slate400,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Distributor data is strictly isolated. Super Admin has full dashboard visibility.",
+                                fontSize = 10.5.sp,
+                                color = Slate500
+                            )
+                        }
+
+                    } else {
+                        // Registration Form
+                        Text(
+                            text = "Register a new distributor phone login. Account will sync to the central Supabase database:",
+                            fontSize = 11.5.sp,
+                            color = Slate500
+                        )
+
+                        OutlinedTextField(
+                            value = regName,
+                            onValueChange = { regName = it },
+                            label = { Text("Full Name *") },
+                            placeholder = { Text("e.g. Distributor Name") },
+                            leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = Indigo600) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("input_reg_name"),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = regEmail,
+                            onValueChange = { regEmail = it },
+                            label = { Text("Email Address (Login ID) *") },
+                            placeholder = { Text("e.g. distributor@smartgroup.com") },
+                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = Indigo600) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("input_reg_email"),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = regPhone,
+                            onValueChange = { regPhone = it },
+                            label = { Text("Phone Number *") },
+                            placeholder = { Text("e.g. +91 98765 43210") },
+                            leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = Indigo600) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("input_reg_phone"),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = regPassword,
+                            onValueChange = { regPassword = it },
+                            label = { Text("Create Password (min. 6 chars) *") },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Indigo600) },
+                            trailingIcon = {
+                                IconButton(onClick = { regPasswordVisible = !regPasswordVisible }) {
+                                    Icon(
+                                        imageVector = if (regPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                        contentDescription = null,
+                                        tint = Slate400
+                                    )
+                                }
+                            },
+                            visualTransformation = if (regPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth().testTag("input_reg_password"),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+
+                        // Team Selection
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Assign Team / Division", fontSize = 11.5.sp, color = Slate600, fontWeight = FontWeight.Medium)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.AdminPanelSettings,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
+                                teams.take(3).forEach { team ->
+                                    val isSelected = regTeamId == team.id
+                                    FilterChip(
+                                        selected = isSelected,
+                                        onClick = {
+                                            regTeamId = team.id
+                                            regTeamName = team.name
+                                        },
+                                        label = { Text(team.name, fontSize = 11.sp) },
+                                        leadingIcon = if (isSelected) {
+                                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
+                                        } else null
+                                    )
+                                }
                             }
-                            Column {
-                                Text(
-                                    text = "Super Admin (All-Over Access)",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                        }
+
+                        // Register Button
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                performRegistration()
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .testTag("btn_register_submit"),
+                            colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                            shape = RoundedCornerShape(10.dp),
+                            enabled = !isSubmitting
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
                                 )
+                            } else {
+                                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "User ID: admin  •  Pass: admin123",
-                                    fontSize = 11.sp,
-                                    color = Amber300
+                                    text = "Create Distributor Account",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
-                        Text("Fill Admin", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Amber400)
                     }
-
-                    Text(
-                        text = "Distributors: Enter your private User ID and Password issued by Super Admin.",
-                        fontSize = 10.sp,
-                        color = Slate400,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
                 }
             }
         }

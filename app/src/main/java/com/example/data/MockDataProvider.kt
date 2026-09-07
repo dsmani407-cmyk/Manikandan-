@@ -47,7 +47,6 @@ object MockDataProvider {
             conversionsCount = 8,
             totalClosedAmount = 180000.0,
             loginUserId = "priya",
-            loginPassword = "pass123",
             currentLoginAt = "04 Sep 2026, 08:30 AM",
             lastLoginAt = "03 Sep 2026, 06:15 PM"
         ),
@@ -64,7 +63,6 @@ object MockDataProvider {
             conversionsCount = 5,
             totalClosedAmount = 110000.0,
             loginUserId = "arun",
-            loginPassword = "pass123",
             currentLoginAt = "04 Sep 2026, 08:45 AM",
             lastLoginAt = "03 Sep 2026, 05:50 PM"
         ),
@@ -81,7 +79,6 @@ object MockDataProvider {
             conversionsCount = 9,
             totalClosedAmount = 215000.0,
             loginUserId = "karthik",
-            loginPassword = "pass123",
             currentLoginAt = "04 Sep 2026, 09:00 AM",
             lastLoginAt = "03 Sep 2026, 07:10 PM"
         ),
@@ -98,7 +95,6 @@ object MockDataProvider {
             conversionsCount = 4,
             totalClosedAmount = 90000.0,
             loginUserId = "sneha",
-            loginPassword = "pass123",
             currentLoginAt = "04 Sep 2026, 08:15 AM",
             lastLoginAt = "02 Sep 2026, 06:30 PM"
         ),
@@ -115,7 +111,6 @@ object MockDataProvider {
             conversionsCount = 6,
             totalClosedAmount = 145000.0,
             loginUserId = "divya",
-            loginPassword = "pass123",
             currentLoginAt = "04 Sep 2026, 08:50 AM",
             lastLoginAt = "03 Sep 2026, 06:40 PM"
         )
@@ -538,97 +533,6 @@ object MockDataProvider {
             avatarColorHex = 0xFF059669,
             closureProofImageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=60",
             badgeTitle = "Consistent Closer"
-        )
-    )
-
-    val supabaseSecurityRules = listOf(
-        SupabaseSecurityRule(
-            tableName = "sales_closings",
-            policyName = "Team Wise Sales Access Policy",
-            operation = "SELECT / ALL",
-            tamilExplanation = "Admin என்றால் அனைத்து டீம்களின் விற்பனையையும் பார்க்கலாம். Team Member என்றால் தன் சொந்த டீமின் (Same team_id) விற்பனையை மட்டுமே பார்க்கலாம்.",
-            sqlCode = """
-                ALTER TABLE sales_closings ENABLE ROW LEVEL SECURITY;
-
-                CREATE POLICY "Team Wise Sales Access Policy" 
-                ON sales_closings
-                FOR SELECT TO authenticated
-                USING (
-                    EXISTS (
-                        SELECT 1 FROM app_users 
-                        WHERE id = auth.uid() AND role = 'ADMIN'
-                    )
-                    OR
-                    team_id = (
-                        SELECT team_id FROM app_users 
-                        WHERE id = auth.uid()
-                    )
-                );
-            """.trimIndent()
-        ),
-        SupabaseSecurityRule(
-            tableName = "telecalling_leads",
-            policyName = "Team Wise Leads Access Policy",
-            operation = "SELECT / ALL",
-            tamilExplanation = "Admin அனைத்து லீட்களையும் பார்க்கலாம். Team Member தன் டீமின் team_id கொண்ட லீட்களை மட்டுமே பார்க்கவோ அழைக்கவோ முடியும்.",
-            sqlCode = """
-                ALTER TABLE telecalling_leads ENABLE ROW LEVEL SECURITY;
-
-                CREATE POLICY "Team Wise Leads Access Policy" 
-                ON telecalling_leads
-                FOR SELECT TO authenticated
-                USING (
-                    EXISTS (
-                        SELECT 1 FROM app_users 
-                        WHERE id = auth.uid() AND role = 'ADMIN'
-                    )
-                    OR
-                    team_id = (
-                        SELECT team_id FROM app_users 
-                        WHERE id = auth.uid()
-                    )
-                );
-            """.trimIndent()
-        ),
-        SupabaseSecurityRule(
-            tableName = "counselling_sessions",
-            policyName = "Team Wise Counselling Access Policy",
-            operation = "SELECT / ALL",
-            tamilExplanation = "Admin அனைத்து டீம் கவுன்சிலிங் பதிவுகளையும் கண்காணிக்கலாம். Team Member தன் சொந்த டீமில் நடந்த கவுன்சிலிங் விவரங்களை மட்டுமே காண முடியும்.",
-            sqlCode = """
-                ALTER TABLE counselling_sessions ENABLE ROW LEVEL SECURITY;
-
-                CREATE POLICY "Team Wise Counselling Access Policy" 
-                ON counselling_sessions
-                FOR SELECT TO authenticated
-                USING (
-                    EXISTS (
-                        SELECT 1 FROM app_users 
-                        WHERE id = auth.uid() AND role = 'ADMIN'
-                    )
-                    OR
-                    team_id = (
-                        SELECT team_id FROM app_users 
-                        WHERE id = auth.uid()
-                    )
-                );
-            """.trimIndent()
-        ),
-        SupabaseSecurityRule(
-            tableName = "storage.objects ('sales-proofs')",
-            policyName = "Sales Proof Photos Bucket Policy",
-            operation = "INSERT / SELECT",
-            tamilExplanation = "விற்பனை நிறைவு புகைப்படங்கள் (Customer Closing Proofs) 'sales-proofs' bucket-ல் சேமிக்கப்படுகின்றன. அங்கீகரிக்கப்பட்ட பயனர்கள் தங்களின் டீம் ஆவணங்களை பதிவேற்றவும் பார்க்கவும் முடியும்.",
-            sqlCode = """
-                -- Supabase Cloud Storage Security Policy
-                CREATE POLICY "Authenticated users can upload sales proofs"
-                ON storage.objects FOR INSERT TO authenticated
-                WITH CHECK (bucket_id = 'sales-proofs');
-
-                CREATE POLICY "Team wise read access for sales proofs"
-                ON storage.objects FOR SELECT TO authenticated
-                USING (bucket_id = 'sales-proofs');
-            """.trimIndent()
         )
     )
 }

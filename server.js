@@ -22,7 +22,53 @@ const MIME_TYPES = {
   '.ttf': 'font/ttf'
 };
 
-const server = http.createServer((req, res) => {
+// Secure server-side admin configuration (stored outside public directory)
+const ADMIN_CONFIG_FILE = path.join(__dirname, 'admin_config.json');
+
+function getAdminConfig() {
+  try {
+    if (fs.existsSync(ADMIN_CONFIG_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ADMIN_CONFIG_FILE, 'utf8'));
+      return data;
+    }
+  } catch (e) {
+    console.error('Error reading admin config:', e);
+  }
+  // Default server-side configuration
+  const defaultData = {
+    adminId: 'admin',
+    name: 'Command SuperAdmin',
+    password: process.env.ADMIN_PASSWORD || 'adminsecret',
+    role: 'SuperAdmin',
+    team: 'HQ Executive',
+    phone: '+91 94440 00000',
+    email: 'd.s.mani407@gmail.com'
+  };
+  try {
+    fs.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify(defaultData, null, 2), 'utf8');
+  } catch (e) {}
+  return defaultData;
+}
+
+function saveAdminConfig(cfg) {
+  fs.writeFileSync(ADMIN_CONFIG_FILE, JSON.stringify(cfg, null, 2), 'utf8');
+}
+
+function parseJsonBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch (e) {
+        resolve({});
+      }
+    });
+  });
+}
+
+const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   let pathname = parsedUrl.pathname;
 
@@ -30,6 +76,73 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', app: 'Smart Group PWA', time: new Date().toISOString() }));
+    return;
+  }
+
+  // Backend Admin Authentication API (Credentials never exposed to frontend code)
+  if (pathname === '/api/auth/admin-login' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const enteredId = (body.adminId || '').trim();
+    const enteredPass = (body.password || '').trim();
+    const adminConfig = getAdminConfig();
+
+    if (
+      (enteredId.toLowerCase() === adminConfig.adminId.toLowerCase() ||
+       enteredId.toLowerCase() === (adminConfig.email || '').toLowerCase()) &&
+      enteredPass === adminConfig.password
+    ) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        profile: {
+          id: 'prof-admin',
+          adminId: adminConfig.adminId,
+          name: adminConfig.name,
+          role: 'SuperAdmin',
+          team: adminConfig.team || 'HQ Executive',
+          email: adminConfig.email,
+          phone: adminConfig.phone
+        }
+      }));
+      return;
+    } else {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: 'Invalid administrative credentials.' }));
+      return;
+    }
+  }
+
+  // Backend Admin Update Credentials API
+  if (pathname === '/api/admin/update-credentials' && req.method === 'POST') {
+    const body = await parseJsonBody(req);
+    const { currentPassword, newAdminId, newName, newPassword } = body;
+    const adminConfig = getAdminConfig();
+
+    if (!currentPassword || currentPassword !== adminConfig.password) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, message: 'Current password verification failed.' }));
+      return;
+    }
+
+    if (newAdminId && newAdminId.trim()) adminConfig.adminId = newAdminId.trim();
+    if (newName && newName.trim()) adminConfig.name = newName.trim();
+    if (newPassword && newPassword.trim()) adminConfig.password = newPassword.trim();
+
+    saveAdminConfig(adminConfig);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      success: true,
+      message: 'Admin credentials updated successfully.',
+      profile: {
+        id: 'prof-admin',
+        adminId: adminConfig.adminId,
+        name: adminConfig.name,
+        role: 'SuperAdmin',
+        team: adminConfig.team,
+        email: adminConfig.email
+      }
+    }));
     return;
   }
 

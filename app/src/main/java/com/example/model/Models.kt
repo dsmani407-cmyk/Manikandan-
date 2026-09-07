@@ -80,7 +80,6 @@ data class TeamMember(
     val conversionsCount: Int = 5,
     val totalClosedAmount: Double = 125000.0,
     val loginUserId: String = "",
-    val loginPassword: String = "pass123",
     val currentLoginAt: String = "04 Sep 2026, 08:58 AM",
     val lastLoginAt: String = "03 Sep 2026, 06:45 PM"
 )
@@ -128,7 +127,8 @@ data class ConfirmedGuest(
     val assignedCounsellor: String,
     val status: GuestStatus = GuestStatus.SCHEDULED,
     val locationOrRoom: String = "Counselling Hall A",
-    val notes: String = ""
+    val notes: String = "",
+    val distributorId: String = ""
 )
 
 enum class TaskStatus(val label: String) {
@@ -189,7 +189,8 @@ data class CounsellingLog(
     val candidatePhone: String,
     val outcome: CounsellingOutcome,
     val keyDiscussion: String,
-    val recordedByMemberName: String
+    val recordedByMemberName: String,
+    val distributorId: String = ""
 )
 
 enum class ApprovalStatus(val label: String) {
@@ -211,7 +212,8 @@ data class SalesTransaction(
     val date: String,
     val closureProofImageUrl: String? = null,
     val storageBucket: String = "sales-proofs",
-    val approvalStatus: ApprovalStatus = ApprovalStatus.PENDING
+    val approvalStatus: ApprovalStatus = ApprovalStatus.PENDING,
+    val distributorId: String = ""
 )
 
 data class ClosureCelebration(
@@ -226,14 +228,6 @@ data class ClosureCelebration(
     val avatarColorHex: Long = 0xFF10B981,
     val closureProofImageUrl: String? = null,
     val badgeTitle: String = "Star Closer"
-)
-
-data class SupabaseSecurityRule(
-    val tableName: String,
-    val policyName: String,
-    val operation: String,
-    val tamilExplanation: String,
-    val sqlCode: String
 )
 
 enum class NotificationType {

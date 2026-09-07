@@ -1,16 +1,22 @@
 package com.example.data
 
 import com.example.data.local.*
+import com.example.data.remote.CloudSyncStatus
+import com.example.data.remote.SupabaseClient
+import com.example.data.remote.SupabaseUserSession
 import com.example.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -18,8 +24,11 @@ class CrmRepository(
     private val crmDao: CrmDao? = null
 ) {
     private val repoScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val supabaseClient: SupabaseClient = SupabaseClient()
+    val cloudSyncStatus: StateFlow<CloudSyncStatus> = supabaseClient.syncStatus
+    private var periodicSyncJob: Job? = null
 
-    private val _isUserLoggedIn = MutableStateFlow<Boolean>(true)
+    private val _isUserLoggedIn = MutableStateFlow<Boolean>(false)
     val isUserLoggedIn: StateFlow<Boolean> = _isUserLoggedIn.asStateFlow()
 
     private val _currentUserRole = MutableStateFlow<CurrentUserRole>(CurrentUserRole.SuperAdmin())
@@ -42,6 +51,15 @@ class CrmRepository(
 
     private val _offlineCacheInfo = MutableStateFlow(OfflineCacheInfo())
     val offlineCacheInfo: StateFlow<OfflineCacheInfo> = _offlineCacheInfo.asStateFlow()
+
+    data class AdminAccount(
+        val adminId: String = "admin",
+        val name: String = "Command SuperAdmin",
+        val email: String = "d.s.mani407@gmail.com"
+    )
+
+    private val _adminAccount = MutableStateFlow(AdminAccount())
+    val adminAccount: StateFlow<AdminAccount> = _adminAccount.asStateFlow()
 
     init {
         // Automatically seed/cache initial data into Room database if available
@@ -217,86 +235,190 @@ class CrmRepository(
         _selectedTeamFilter.value = teamId
     }
 
+    private val _selectedDistributorFilter = MutableStateFlow<String?>(null) // null = all
+    val selectedDistributorFilter: StateFlow<String?> = _selectedDistributorFilter.asStateFlow()
+
+    fun setDistributorFilter(distributorId: String?) {
+        _selectedDistributorFilter.value = distributorId
+    }
+
+    private val _selectedDateFilter = MutableStateFlow<String>("ALL") // ALL, TODAY, THIS_WEEK, THIS_MONTH
+    val selectedDateFilter: StateFlow<String> = _selectedDateFilter.asStateFlow()
+
+    fun setDateFilter(filter: String) {
+        _selectedDateFilter.value = filter
+    }
+
     private fun getCurrentTimestamp(): String {
         val sdf = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
         return sdf.format(Date())
     }
 
-    fun login(userIdInput: String, passwordInput: String): Pair<Boolean, String?> {
+    suspend fun loginAsync(userIdInput: String, passwordInput: String): Pair<Boolean, String?> {
         val trimmedId = userIdInput.trim()
         val trimmedPass = passwordInput.trim()
 
         if (trimmedId.isEmpty() || trimmedPass.isEmpty()) {
-            return false to "Please enter both User ID and Password."
+            return false to "Please enter both User ID/Email and Password."
         }
 
-        // 1. Check Admin Login
-        if (trimmedId.equals("admin", ignoreCase = true) || trimmedId.equals("d.s.mani407@gmail.com", ignoreCase = true)) {
-            if (trimmedPass == "admin123" || trimmedPass == "password123" || trimmedPass == "admin") {
-                val now = getCurrentTimestamp()
-                val prev = when (val r = _currentUserRole.value) {
-                    is CurrentUserRole.SuperAdmin -> r.currentLoginAt
-                    else -> "03 Sep 2026, 07:15 PM"
-                }
+        // Authenticate securely via Supabase Client
+        val result = supabaseClient.signIn(trimmedId, trimmedPass)
+        if (result.isSuccess) {
+            val session = result.getOrThrow()
+            val now = getCurrentTimestamp()
+            val isSuperAdmin = session.role.equals("superadmin", ignoreCase = true) ||
+                    session.role.equals("admin", ignoreCase = true)
+
+            if (isSuperAdmin) {
                 val adminRole = CurrentUserRole.SuperAdmin(
-                    id = "admin-001",
-                    name = "Mani (Super Admin)",
-                    email = "d.s.mani407@gmail.com",
-                    userId = "admin",
-                    currentLoginAt = now,
-                    lastLoginAt = prev
-                )
-                _currentUserRole.value = adminRole
-                _isUserLoggedIn.value = true
-                return true to null
-            } else {
-                return false to "Invalid Admin password. Default is: admin123"
-            }
-        }
-
-        // 2. Check Individual Distributor Login
-        val matchedMember = _members.value.find { m ->
-            m.loginUserId.equals(trimmedId, ignoreCase = true) ||
-            m.email.equals(trimmedId, ignoreCase = true) ||
-            m.id.equals(trimmedId, ignoreCase = true) ||
-            m.name.equals(trimmedId, ignoreCase = true)
-        }
-
-        if (matchedMember != null) {
-            if (trimmedPass == matchedMember.loginPassword || trimmedPass == "pass123") {
-                val now = getCurrentTimestamp()
-                val prevLogin = matchedMember.currentLoginAt
-
-                // Update distributor's stored login timestamps
-                val updatedMember = matchedMember.copy(
-                    lastLoginAt = prevLogin,
+                    id = session.userId,
+                    name = session.name,
+                    email = session.email,
+                    userId = session.email,
                     currentLoginAt = now
                 )
-                _members.value = _members.value.map { if (it.id == matchedMember.id) updatedMember else it }
-
-                val team = _teams.value.find { it.id == matchedMember.teamId }
+                _currentUserRole.value = adminRole
+            } else {
                 val distributorRole = CurrentUserRole.Telecaller(
-                    id = matchedMember.id,
-                    name = matchedMember.name,
-                    teamId = matchedMember.teamId,
-                    teamName = team?.name ?: "Operations Team",
-                    email = matchedMember.email,
-                    userId = matchedMember.loginUserId,
-                    currentLoginAt = now,
-                    lastLoginAt = prevLogin
+                    id = session.userId,
+                    name = session.name,
+                    teamId = session.teamId,
+                    teamName = session.teamName,
+                    email = session.email,
+                    userId = session.agentCode,
+                    currentLoginAt = now
                 )
                 _currentUserRole.value = distributorRole
-                _isUserLoggedIn.value = true
-                return true to null
-            } else {
-                return false to "Incorrect password for distributor '${matchedMember.name}'. Default is: pass123"
+            }
+
+            _isUserLoggedIn.value = true
+            syncFromCloud()
+            startPeriodicSync()
+            return true to null
+        } else {
+            return false to (result.exceptionOrNull()?.message ?: "Authentication failed. Please verify credentials.")
+        }
+    }
+
+    fun login(userIdInput: String, passwordInput: String): Pair<Boolean, String?> {
+        return runBlocking {
+            loginAsync(userIdInput, passwordInput)
+        }
+    }
+
+    suspend fun registerDistributor(
+        email: String,
+        pass: String,
+        name: String,
+        phone: String,
+        teamId: String,
+        teamName: String
+    ): Pair<Boolean, String?> {
+        val res = supabaseClient.signUp(email, pass, name, phone, teamId, teamName)
+        if (res.isSuccess) {
+            val session = res.getOrThrow()
+            val now = getCurrentTimestamp()
+            val distributorRole = CurrentUserRole.Telecaller(
+                id = session.userId,
+                name = session.name,
+                teamId = session.teamId,
+                teamName = session.teamName,
+                email = session.email,
+                userId = session.agentCode,
+                currentLoginAt = now
+            )
+            _currentUserRole.value = distributorRole
+            _isUserLoggedIn.value = true
+            syncFromCloud()
+            startPeriodicSync()
+            return true to null
+        } else {
+            return false to (res.exceptionOrNull()?.message ?: "Registration failed.")
+        }
+    }
+
+    fun syncFromCloud() {
+        repoScope.launch {
+            try {
+                // Fetch latest leads from Supabase cloud
+                val leadsResult = supabaseClient.fetchLeads()
+                if (leadsResult.isSuccess) {
+                    val remoteLeads = leadsResult.getOrNull()
+                    if (!remoteLeads.isNullOrEmpty()) {
+                        _leads.value = remoteLeads
+                    }
+                }
+
+                // Fetch latest daily tasks
+                val tasksResult = supabaseClient.fetchDailyTasks()
+                if (tasksResult.isSuccess) {
+                    val remoteTasks = tasksResult.getOrNull()
+                    if (!remoteTasks.isNullOrEmpty()) {
+                        _dailyTasks.value = remoteTasks
+                    }
+                }
+
+                // Fetch latest sales
+                val salesResult = supabaseClient.fetchSales()
+                if (salesResult.isSuccess) {
+                    val remoteSales = salesResult.getOrNull()
+                    if (!remoteSales.isNullOrEmpty()) {
+                        _salesTransactions.value = remoteSales
+                    }
+                }
+
+                // Fetch latest counselling logs
+                val logsResult = supabaseClient.fetchCounsellingLogs()
+                if (logsResult.isSuccess) {
+                    val remoteLogs = logsResult.getOrNull()
+                    if (!remoteLogs.isNullOrEmpty()) {
+                        _counsellingLogs.value = remoteLogs
+                    }
+                }
+
+                // Fetch latest confirmed guests
+                val guestsResult = supabaseClient.fetchConfirmedGuests()
+                if (guestsResult.isSuccess) {
+                    val remoteGuests = guestsResult.getOrNull()
+                    if (!remoteGuests.isNullOrEmpty()) {
+                        _confirmedGuests.value = remoteGuests
+                    }
+                }
+
+                // If super admin, fetch all registered distributor profiles
+                if (_currentUserRole.value.isSuperAdmin) {
+                    val profilesResult = supabaseClient.fetchDistributorProfiles()
+                    if (profilesResult.isSuccess) {
+                        val remoteProfiles = profilesResult.getOrNull()
+                        if (!remoteProfiles.isNullOrEmpty()) {
+                            _members.value = remoteProfiles
+                        }
+                    }
+                }
+
+                updateCacheInfo()
+            } catch (e: Exception) {
+                // Network error silently caught; existing cache retained
             }
         }
+    }
 
-        return false to "User ID '$trimmedId' not found. Check distributor user IDs or use 'admin'."
+    private fun startPeriodicSync() {
+        periodicSyncJob?.cancel()
+        periodicSyncJob = repoScope.launch {
+            while (_isUserLoggedIn.value) {
+                delay(8000)
+                if (_isUserLoggedIn.value) {
+                    syncFromCloud()
+                }
+            }
+        }
     }
 
     fun logout() {
+        periodicSyncJob?.cancel()
+        supabaseClient.signOut()
         _isUserLoggedIn.value = false
     }
 
@@ -309,6 +431,9 @@ class CrmRepository(
         _leads.value = _leads.value.map {
             if (it.id == leadId) it.copy(status = newStatus) else it
         }
+        repoScope.launch {
+            supabaseClient.updateLeadStatus(leadId, newStatus)
+        }
         crmDao?.let { dao ->
             repoScope.launch {
                 dao.updateLeadStatus(leadId, newStatus.name)
@@ -319,6 +444,9 @@ class CrmRepository(
 
     fun addLead(lead: Lead) {
         _leads.value = listOf(lead) + _leads.value
+        repoScope.launch {
+            supabaseClient.insertLead(lead)
+        }
         val notif = AppNotification(
             id = "notif-lead-${System.currentTimeMillis()}",
             title = "New Lead Assigned",
@@ -362,9 +490,13 @@ class CrmRepository(
             assignedCounsellor = assignedCounsellor,
             status = GuestStatus.SCHEDULED,
             locationOrRoom = location,
-            notes = if (notes.isNotBlank()) notes else lead.notes
+            notes = if (notes.isNotBlank()) notes else lead.notes,
+            distributorId = lead.assignedTelecallerId
         )
         _confirmedGuests.value = listOf(newGuest) + _confirmedGuests.value
+        repoScope.launch {
+            supabaseClient.insertConfirmedGuest(newGuest)
+        }
     }
 
     fun updateGuestStatus(guestId: String, newStatus: GuestStatus) {
@@ -375,6 +507,9 @@ class CrmRepository(
 
     fun addConfirmedGuest(guest: ConfirmedGuest) {
         _confirmedGuests.value = listOf(guest) + _confirmedGuests.value
+        repoScope.launch {
+            supabaseClient.insertConfirmedGuest(guest)
+        }
         crmDao?.let { dao ->
             repoScope.launch {
                 dao.insertGuest(CachedConfirmedGuestEntity.fromDomain(guest))
@@ -385,8 +520,12 @@ class CrmRepository(
 
     // Task Operations
     fun updateTaskStatus(taskId: String, newStatus: TaskStatus) {
+        val isCompleted = (newStatus == TaskStatus.COMPLETED)
         _dailyTasks.value = _dailyTasks.value.map {
             if (it.id == taskId) it.copy(status = newStatus) else it
+        }
+        repoScope.launch {
+            supabaseClient.updateTaskCompletion(taskId, isCompleted)
         }
         crmDao?.let { dao ->
             repoScope.launch {
@@ -400,6 +539,9 @@ class CrmRepository(
         val newStatus = if (isCompleted) TaskStatus.COMPLETED else TaskStatus.PENDING
         _dailyTasks.value = _dailyTasks.value.map {
             if (it.id == taskId) it.copy(status = newStatus) else it
+        }
+        repoScope.launch {
+            supabaseClient.updateTaskCompletion(taskId, isCompleted)
         }
         crmDao?.let { dao ->
             repoScope.launch {
@@ -439,6 +581,9 @@ class CrmRepository(
 
     fun addTask(task: DailyTask) {
         _dailyTasks.value = listOf(task) + _dailyTasks.value
+        repoScope.launch {
+            supabaseClient.insertDailyTask(task)
+        }
         val notif = AppNotification(
             id = "notif-task-${System.currentTimeMillis()}",
             title = "Upcoming Follow-up Task",
@@ -480,6 +625,9 @@ class CrmRepository(
                 )
             } else it
         }
+        repoScope.launch {
+            supabaseClient.updateTaskCompletion(taskId, status == TaskStatus.COMPLETED)
+        }
         crmDao?.let { dao ->
             repoScope.launch {
                 val updatedTask = _dailyTasks.value.find { it.id == taskId }
@@ -503,11 +651,17 @@ class CrmRepository(
     // Counselling Log Operations
     fun addCounsellingLog(log: CounsellingLog) {
         _counsellingLogs.value = listOf(log) + _counsellingLogs.value
+        repoScope.launch {
+            supabaseClient.insertCounsellingLog(log)
+        }
     }
 
     // Sales & Seniority Operations
     fun addSalesTransaction(tx: SalesTransaction) {
         _salesTransactions.value = listOf(tx) + _salesTransactions.value
+        repoScope.launch {
+            supabaseClient.insertSalesTransaction(tx)
+        }
         // If closed with amount, add to celebration wall
         val newCeleb = ClosureCelebration(
             id = "celeb-${UUID.randomUUID().toString().take(6)}",
@@ -583,8 +737,7 @@ class CrmRepository(
         email: String,
         phone: String,
         avatarUrl: String? = null,
-        loginUserId: String? = null,
-        loginPassword: String? = null
+        loginUserId: String? = null
     ) {
         val initials = name.split(" ").mapNotNull { it.firstOrNull()?.toString() }.take(2).joinToString("")
         val sanitizedId = (loginUserId?.takeIf { it.isNotBlank() } ?: name.split(" ").firstOrNull()?.lowercase() ?: "user").filter { it.isLetterOrDigit() }
@@ -602,17 +755,37 @@ class CrmRepository(
             conversionsCount = 0,
             totalClosedAmount = 0.0,
             loginUserId = sanitizedId,
-            loginPassword = loginPassword?.takeIf { it.isNotBlank() } ?: "pass123",
             currentLoginAt = getCurrentTimestamp(),
             lastLoginAt = "Never"
         )
         _members.value = _members.value + newMember
     }
 
-    fun updateMemberCredentials(memberId: String, newUserId: String, newPassword: String) {
+    fun updateMemberCredentials(memberId: String, newUserId: String) {
         _members.value = _members.value.map {
-            if (it.id == memberId) it.copy(loginUserId = newUserId, loginPassword = newPassword) else it
+            if (it.id == memberId) it.copy(loginUserId = newUserId) else it
         }
+    }
+
+    fun updateAdminCredentials(currentPass: String, newAdminId: String, newName: String, newPass: String): Pair<Boolean, String?> {
+        if (newAdminId.isBlank() || newName.isBlank()) {
+            return false to "Admin ID and Name cannot be empty."
+        }
+        val currentAdmin = _adminAccount.value
+        val updated = currentAdmin.copy(
+            adminId = newAdminId.trim(),
+            name = newName.trim()
+        )
+        _adminAccount.value = updated
+
+        if (_currentUserRole.value is CurrentUserRole.SuperAdmin) {
+            val cur = _currentUserRole.value as CurrentUserRole.SuperAdmin
+            _currentUserRole.value = cur.copy(
+                userId = updated.adminId,
+                name = updated.name
+            )
+        }
+        return true to null
     }
 
     fun removeMember(memberId: String) {

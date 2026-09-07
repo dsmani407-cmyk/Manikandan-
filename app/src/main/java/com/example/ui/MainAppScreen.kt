@@ -329,7 +329,8 @@ fun MainAppScreen(
         ) { innerPadding ->
             Row(modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)) {
+                .padding(innerPadding)
+                .imePadding()) {
                 if (isWideScreen) {
                     NavigationRail(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -705,7 +706,7 @@ fun MainAppScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("User ID: ${currentRole.loginId}", fontWeight = FontWeight.ExtraBold, fontSize = 12.sp, color = Indigo600)
+                                Text(currentRole.displayName, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = Indigo600)
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(4.dp))
@@ -715,7 +716,6 @@ fun MainAppScreen(
                                     Text(currentRole.roleName, fontWeight = FontWeight.Bold, fontSize = 10.sp, color = Color.White)
                                 }
                             }
-                            Text("Name: ${currentRole.displayName}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Slate900)
                             if (currentRole is CurrentUserRole.Telecaller) {
                                 Text("Team: ${(currentRole as CurrentUserRole.Telecaller).teamName}", fontSize = 11.sp, color = Slate600)
                             }
@@ -727,28 +727,6 @@ fun MainAppScreen(
 
                     if (currentRole is CurrentUserRole.Telecaller) {
                         val telecallerRole = currentRole as CurrentUserRole.Telecaller
-                        // Distributor Private Shield Card
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Indigo50
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(Icons.Default.Lock, contentDescription = null, tint = Indigo600, modifier = Modifier.size(16.dp))
-                                    Text("Confidential Distributor Login", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Indigo600)
-                                }
-                                Text(
-                                    text = "Your login ID, password, and task activity are strictly private to you. No other team member can view your account details. Only Super Admin has all-over access.",
-                                    fontSize = 11.sp,
-                                    color = Slate700,
-                                    lineHeight = 15.sp
-                                )
-                            }
-                        }
-
                         // Distributor's own credential management button
                         val myMember = members.find { it.id == telecallerRole.id }
                         if (myMember != null) {
@@ -767,17 +745,29 @@ fun MainAppScreen(
                             }
                         }
                     } else {
-                        // Super Admin Exclusive Section: All distributor accounts & credentials oversight
+                        // Super Admin: Option to edit Admin ID, Name & Password
+                        Button(
+                            onClick = {
+                                showRoleSwitchDialog = false
+                                crmViewModel.openModal(ActiveModalDialog.EditAdminCredentials)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Amber600),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("btn_edit_admin_credentials")
+                        ) {
+                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Edit Admin ID, Name & Password", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        // Super Admin: Distributor accounts management
                         Text(
-                            text = "Distributor Accounts (Super Admin Oversight):",
+                            text = "Distributor Accounts Management:",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = Slate700
-                        )
-                        Text(
-                            text = "Admin can view all distributor login IDs, last logins, and manage credentials.",
-                            fontSize = 10.sp,
-                            color = Slate500
                         )
 
                         Column(
@@ -807,7 +797,7 @@ fun MainAppScreen(
                                         )
                                         Column {
                                             Text(m.name, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Slate900)
-                                            Text("Login ID: ${m.loginUserId}", fontSize = 10.sp, color = Indigo600, fontWeight = FontWeight.SemiBold)
+                                            Text("${m.role} • ${m.phone}", fontSize = 10.sp, color = Slate500, fontWeight = FontWeight.Medium)
                                             Text("Last Login: ${m.lastLoginAt}", fontSize = 9.sp, color = Slate400)
                                         }
                                     }

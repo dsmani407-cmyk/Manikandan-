@@ -66,6 +66,18 @@
           </svg>
         </button>
 
+        <!-- Privacy Toggle ("no one see" sensitive numbers) -->
+        <button id="btn-privacy-toggle" class="icon-btn" title="Privacy Mode (No One See Sensitive Data)">
+          <svg id="privacy-icon-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg id="privacy-icon-closed" style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+        </button>
+
         <!-- Theme Toggle (Field Sales Dark vs Office Light) -->
         <button id="btn-theme-toggle" class="icon-btn" title="Toggle Field Sales Mode">
           <svg id="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -91,6 +103,14 @@
             <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
           </svg>
           <span id="header-notif-badge" class="notif-badge-count">2</span>
+        </button>
+
+        <!-- Quick Logout / Lock Button -->
+        <button id="btn-logout-header" class="icon-btn" title="Logout & Lock Screen (No One See)" style="color:#f43f5e; border-color:rgba(244,63,94,0.3);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
         </button>
       </div>
     </header>
@@ -198,15 +218,128 @@
         <span class="nav-label">Sales</span>
       </button>
 
-      <button class="nav-item" data-tab="teams">
+      <button class="nav-item" data-tab="profile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="2" y1="12" x2="22" y2="12"></line>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
         </svg>
-        <span class="nav-label">Teams</span>
+        <span class="nav-label">Profile</span>
       </button>
     </nav>
+  </div>
+
+  <!-- Secure Authentication & Login Portal ("no one see") -->
+  <div id="auth-overlay">
+    <div class="auth-box">
+      <div class="auth-header">
+        <div class="auth-logo">SG</div>
+        <div class="auth-title">Command Center Login</div>
+        <div class="auth-subtitle">Tranz India Authorized Dealer</div>
+      </div>
+
+      <div class="auth-notice">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" style="flex-shrink:0;">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Private Session: Sensitive financial data & candidate leads are hidden until authorized.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Profile / Account</label>
+        <select id="login-profile-select" class="form-input">
+          <!-- Populated by app.js -->
+        </select>
+        <div id="login-profile-preview" style="margin-top:6px;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Profile Password</label>
+        <div class="password-wrapper">
+          <input id="login-password-input" type="password" class="form-input" placeholder="Enter profile password...">
+          <button type="button" id="btn-toggle-login-pwd" class="toggle-password-btn" title="Toggle password visibility">
+            <svg id="eye-icon-login" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; color:var(--text-muted);">
+        <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="chk-remember-me" checked style="cursor:pointer;">
+          <span>Keep session on this device</span>
+        </label>
+      </div>
+
+      <button id="btn-biometric-unlock" class="btn-primary" style="background:linear-gradient(135deg, #059669, #10b981); margin-top:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a10 10 0 0 0-1.74.15"></path>
+          <path d="M7 3.34A10 10 0 0 0 2.22 8.5"></path>
+          <path d="M2 13a10 10 0 0 0 2 6"></path>
+          <path d="M6 21a10 10 0 0 0 6 1"></path>
+          <path d="M18 21a10 10 0 0 0 4-4"></path>
+          <path d="M22 12c0-1.5-.3-2.9-.8-4.2"></path>
+          <path d="M18 4.2A10 10 0 0 0 13 2.1"></path>
+          <path d="M12 6a6 6 0 0 0-6 6c0 4 3 7 6 7s6-3 6-7a6 6 0 0 0-6-6z"></path>
+          <circle cx="12" cy="12" r="2"></circle>
+        </svg>
+        <span>Biometric Unlock (Fingerprint / Face)</span>
+      </button>
+
+      <div style="display:flex; align-items:center; gap:8px; margin:8px 0 4px 0; color:var(--text-muted); font-size:11px;">
+        <div style="flex:1; height:1px; background:var(--border-color-subtle);"></div>
+        <span>OR UNLOCK WITH PASSWORD</span>
+        <div style="flex:1; height:1px; background:var(--border-color-subtle);"></div>
+      </div>
+
+      <button id="btn-submit-login" class="btn-primary" style="margin-top:2px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Unlock with Password</span>
+      </button>
+
+      <button id="btn-show-create-profile" class="btn-secondary" style="border-color:var(--primary); color:var(--primary-light);">
+        + Create New Profile & Sign In
+      </button>
+
+      <!-- Admin Authentication Section -->
+      <div style="margin-top:12px; text-align:center; padding-top:10px; border-top:1px solid var(--border-color-subtle);">
+        <button id="btn-toggle-admin-portal" type="button" style="background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 8px; border-radius:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <span id="txt-toggle-admin-portal">Admin Sign In</span>
+        </button>
+      </div>
+
+      <div id="admin-login-terminal" style="display:none; margin-top:8px; background:rgba(15,23,42,0.85); border:1px solid rgba(239,68,68,0.3); border-radius:10px; padding:12px; text-align:left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:12px; font-weight:800; color:#f87171; display:flex; align-items:center; gap:5px;">
+            Administrator Portal
+          </span>
+          <span style="font-size:9.5px; background:rgba(239,68,68,0.2); color:#fca5a5; padding:1px 5px; border-radius:4px; font-weight:700;">ADMIN</span>
+        </div>
+        <div style="font-size:10.5px; color:var(--text-muted); margin-bottom:8px; line-height:1.3;">
+          Enter administrator credentials to sign in:
+        </div>
+        <div class="form-group" style="margin-bottom:6px;">
+          <label class="form-label" style="font-size:10.5px; color:var(--text-muted);">Admin Email / ID *</label>
+          <input id="admin-portal-id" type="text" class="form-input" placeholder="Enter Admin Email or ID" autocomplete="off" style="height:36px; font-size:12px;">
+        </div>
+        <div class="form-group" style="margin-bottom:8px;">
+          <label class="form-label" style="font-size:10.5px; color:var(--text-muted);">Admin Password *</label>
+          <input id="admin-portal-password" type="password" class="form-input" placeholder="••••••••••••" autocomplete="off" style="height:36px; font-size:12px;">
+        </div>
+        <button id="btn-submit-admin-login" class="btn-primary" style="background:linear-gradient(135deg, #b91c1c, #dc2626); width:100%; height:36px; font-size:11.5px; font-weight:800;">
+          Sign In as Administrator
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Global Modal Container -->

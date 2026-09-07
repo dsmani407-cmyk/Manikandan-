@@ -20,6 +20,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -170,6 +172,15 @@ fun CrmModalsHost(
                 onDismiss = { viewModel.closeModal() },
                 onConfirm = { newUserId, newPassword ->
                     viewModel.updateMemberCredentials(modal.member.id, newUserId, newPassword)
+                }
+            )
+        }
+
+        is ActiveModalDialog.EditAdminCredentials -> {
+            EditAdminCredentialsModal(
+                onDismiss = { viewModel.closeModal() },
+                onConfirm = { currentPass, newAdminId, newName, newPass ->
+                    viewModel.updateAdminCredentials(currentPass, newAdminId, newName, newPass)
                 }
             )
         }
@@ -1700,7 +1711,7 @@ fun EditMemberCredentialsModal(
     onConfirm: (newUserId: String, newPass: String) -> Unit
 ) {
     var userId by remember { mutableStateOf(member.loginUserId) }
-    var password by remember { mutableStateOf(member.loginPassword) }
+    var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -1731,7 +1742,7 @@ fun EditMemberCredentialsModal(
                         fontSize = 16.sp
                     )
                     Text(
-                        text = if (isSuperAdmin) "Super Admin clearance for ${member.name}" else "Confidential login for ${member.name}",
+                        text = if (isSuperAdmin) "Super Admin clearance for ${member.name}" else "Account settings for ${member.name}",
                         fontSize = 11.sp,
                         color = Slate500
                     )
@@ -1783,6 +1794,7 @@ fun EditMemberCredentialsModal(
                     onValueChange = { password = it },
                     label = { Text("Password") },
                     singleLine = true,
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
@@ -1805,6 +1817,218 @@ fun EditMemberCredentialsModal(
                 colors = ButtonDefaults.buttonColors(containerColor = if (isSuperAdmin) Amber600 else Indigo600)
             ) {
                 Text(if (isSuperAdmin) "Save Admin Changes" else "Update Password")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun EditAdminCredentialsModal(
+    onDismiss: () -> Unit,
+    onConfirm: (currentPass: String, newAdminId: String, newName: String, newPass: String) -> Pair<Boolean, String?>
+) {
+    var adminId by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var showCurrentPassword by remember { mutableStateOf(false) }
+    var showNewPassword by remember { mutableStateOf(false) }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.testTag("dialog_edit_admin_credentials"),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Amber100),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = Amber700,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Edit Admin Profile & Credentials",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "Admin Account ID & Details",
+                        fontSize = 11.sp,
+                        color = Slate500
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Amber50
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Amber700,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Admin security: These credentials are strictly private and never visible to any distributor.",
+                            fontSize = 11.sp,
+                            color = Slate700,
+                            lineHeight = 15.sp
+                        )
+                    }
+                }
+
+                if (errorMsg != null) {
+                    Text(
+                        text = errorMsg ?: "",
+                        color = Rose600,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                OutlinedTextField(
+                    value = adminId,
+                    onValueChange = {
+                        adminId = it
+                        errorMsg = null
+                    },
+                    label = { Text("Admin ID / Login Username *") },
+                    placeholder = { Text("e.g. admin or custom ID") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_admin_id")
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        errorMsg = null
+                    },
+                    label = { Text("Admin Display Name *") },
+                    placeholder = { Text("e.g. Command SuperAdmin") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_admin_name")
+                )
+
+                OutlinedTextField(
+                    value = currentPassword,
+                    onValueChange = {
+                        currentPassword = it
+                        errorMsg = null
+                    },
+                    label = { Text("Current Password (to authorize) *") },
+                    placeholder = { Text("Enter current password") },
+                    singleLine = true,
+                    visualTransformation = if (showCurrentPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showCurrentPassword = !showCurrentPassword }) {
+                            Icon(
+                                if (showCurrentPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_admin_current_password")
+                )
+
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = {
+                        newPassword = it
+                        errorMsg = null
+                    },
+                    label = { Text("New Admin Password (leave blank to keep)") },
+                    placeholder = { Text("Enter new password") },
+                    singleLine = true,
+                    visualTransformation = if (showNewPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { showNewPassword = !showNewPassword }) {
+                            Icon(
+                                if (showNewPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = null
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_admin_new_password")
+                )
+
+                if (newPassword.isNotBlank()) {
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = {
+                            confirmPassword = it
+                            errorMsg = null
+                        },
+                        label = { Text("Confirm New Password *") },
+                        placeholder = { Text("Re-enter new password") },
+                        singleLine = true,
+                        visualTransformation = if (showNewPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth().testTag("input_edit_admin_confirm_password")
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (adminId.isBlank()) {
+                        errorMsg = "Admin ID cannot be blank."
+                        return@Button
+                    }
+                    if (name.isBlank()) {
+                        errorMsg = "Admin Name cannot be blank."
+                        return@Button
+                    }
+                    if (currentPassword.isBlank()) {
+                        errorMsg = "Please enter current password to verify identity."
+                        return@Button
+                    }
+                    if (newPassword.isNotBlank() && newPassword != confirmPassword) {
+                        errorMsg = "New passwords do not match."
+                        return@Button
+                    }
+                    isSubmitting = true
+                    val (success, err) = onConfirm(currentPassword, adminId, name, newPassword)
+                    isSubmitting = false
+                    if (!success) {
+                        errorMsg = err ?: "Failed to update admin credentials."
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Amber600),
+                modifier = Modifier.testTag("btn_save_admin_credentials"),
+                enabled = !isSubmitting
+            ) {
+                Text("Save Admin Credentials", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {

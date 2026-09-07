@@ -40,6 +40,7 @@ sealed class ActiveModalDialog {
     object AddTeam : ActiveModalDialog()
     data class AddMember(val preselectedTeamId: String? = null) : ActiveModalDialog()
     data class EditMemberCredentials(val member: TeamMember) : ActiveModalDialog()
+    object EditAdminCredentials : ActiveModalDialog()
     data class LeadDetails(val lead: Lead) : ActiveModalDialog()
     object ViewSecurityPolicies : ActiveModalDialog()
     data class ViewClosureProof(val transaction: SalesTransaction) : ActiveModalDialog()
@@ -52,6 +53,7 @@ class CrmViewModel(
 
     val isUserLoggedIn = repository.isUserLoggedIn
     val currentUserRole = repository.currentUserRole
+    val adminAccount = repository.adminAccount
     val teams = repository.teams
     val members = repository.members
     val leads = repository.leads
@@ -62,8 +64,24 @@ class CrmViewModel(
     val salesTransactions = repository.salesTransactions
     val celebrations = repository.celebrations
     val selectedTeamFilter = repository.selectedTeamFilter
+    val selectedDistributorFilter = repository.selectedDistributorFilter
+    val selectedDateFilter = repository.selectedDateFilter
+    val cloudSyncStatus = repository.cloudSyncStatus
     val allNotifications = repository.notifications
     val offlineCacheInfo: StateFlow<OfflineCacheInfo> = repository.offlineCacheInfo
+
+    fun syncFromCloud() {
+        repository.syncFromCloud()
+        showSnackbar("Syncing latest CRM data from Supabase Cloud...")
+    }
+
+    fun setDistributorFilter(distributorId: String?) {
+        repository.setDistributorFilter(distributorId)
+    }
+
+    fun setDateFilter(filter: String) {
+        repository.setDateFilter(filter)
+    }
 
     fun syncAllToRoomCache() {
         repository.syncAllToRoomCache()
@@ -201,88 +219,165 @@ class CrmViewModel(
         _snackbarMessage.value = null
     }
 
-    // Filtered Leads (Strict Team Data Isolation)
+    // Filtered Leads (Strict Distributor Isolation for Telecaller, Distributor & Date filter for SuperAdmin)
     val filteredLeads: StateFlow<List<Lead>> = combine(
         leads,
         currentUserRole,
-        selectedTeamFilter,
-        selectedLeadStatusFilter,
-        searchQuery
-    ) { allLeads, role, teamFilter, statusFilter, query ->
+        selectedDistributorFilter,
+        selectedDateFilter,
+        selectedLeadStatusFilter
+    ) { allLeads, role, distFilter, dateFilter, statusFilter ->
+        val teamFilter = selectedTeamFilter.value
         allLeads.filter { lead ->
             val matchesRole = when (role) {
-                is CurrentUserRole.SuperAdmin -> true
-                is CurrentUserRole.Telecaller -> lead.teamId == role.teamId
+                is CurrentUserRole.SuperAdmin -> {
+                    val matchesDist = distFilter == null ||
+                            lead.assignedTelecallerId == distFilter ||
+                            lead.assignedTelecallerName.contains(distFilter, ignoreCase = true)
+                    val matchesDate = when (dateFilter) {
+                        "TODAY" -> lead.createdDate.contains("Today", ignoreCase = true)
+                        else -> true
+                    }
+                    val matchesTeam = teamFilter == null || lead.teamId == teamFilter
+                    matchesDist && matchesDate && matchesTeam
+                }
+                is CurrentUserRole.Telecaller -> {
+                    lead.assignedTelecallerId == role.id ||
+                            lead.assignedTelecallerName.equals(role.name, ignoreCase = true)
+                }
             }
-            val matchesTeam = teamFilter == null || lead.teamId == teamFilter
             val matchesStatus = statusFilter == null || lead.status == statusFilter
-            val matchesQuery = query.isBlank() ||
-                    lead.name.contains(query, ignoreCase = true) ||
+            matchesRole && matchesStatus
+        }
+    }.combine(searchQuery) { list, query ->
+        if (query.isBlank()) list
+        else list.filter { lead ->
+            lead.name.contains(query, ignoreCase = true) ||
                     lead.phone.contains(query) ||
                     lead.courseOrProgram.contains(query, ignoreCase = true) ||
                     lead.city.contains(query, ignoreCase = true)
-
-            matchesRole && matchesTeam && matchesStatus && matchesQuery
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Filtered Confirmed Guests (Strict Team Data Isolation)
+    // Filtered Confirmed Guests (Strict Distributor Isolation)
     val filteredConfirmedGuests: StateFlow<List<ConfirmedGuest>> = combine(
         confirmedGuests,
         currentUserRole,
-        selectedTeamFilter
-    ) { allGuests, role, teamFilter ->
+        selectedTeamFilter,
+        selectedDistributorFilter,
+        selectedDateFilter
+    ) { allGuests, role, teamFilter, distFilter, dateFilter ->
         allGuests.filter { guest ->
             when (role) {
-                is CurrentUserRole.SuperAdmin -> teamFilter == null || guest.teamId == teamFilter
-                is CurrentUserRole.Telecaller -> guest.teamId == role.teamId
+                is CurrentUserRole.SuperAdmin -> {
+                    val matchesTeam = teamFilter == null || guest.teamId == teamFilter
+                    val matchesDist = distFilter == null ||
+                            guest.distributorId == distFilter ||
+                            guest.assignedTelecallerName.contains(distFilter, ignoreCase = true)
+                    val matchesDate = when (dateFilter) {
+                        "TODAY" -> guest.visitDateTime.contains("Today", ignoreCase = true)
+                        else -> true
+                    }
+                    matchesTeam && matchesDist && matchesDate
+                }
+                is CurrentUserRole.Telecaller -> {
+                    guest.distributorId == role.id ||
+                            guest.assignedTelecallerName.equals(role.name, ignoreCase = true)
+                }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Filtered Daily Tasks (Strict Team Data Isolation)
+    // Filtered Daily Tasks (Strict Distributor Isolation)
     val filteredDailyTasks: StateFlow<List<DailyTask>> = combine(
         dailyTasks,
         currentUserRole,
-        selectedTeamFilter
-    ) { allTasks, role, teamFilter ->
+        selectedTeamFilter,
+        selectedDistributorFilter,
+        selectedDateFilter
+    ) { allTasks, role, teamFilter, distFilter, dateFilter ->
         allTasks.filter { task ->
             when (role) {
-                is CurrentUserRole.SuperAdmin -> teamFilter == null || task.teamId == teamFilter
-                is CurrentUserRole.Telecaller -> task.teamId == role.teamId
+                is CurrentUserRole.SuperAdmin -> {
+                    val matchesTeam = teamFilter == null || task.teamId == teamFilter
+                    val matchesDist = distFilter == null ||
+                            task.assignedToMemberId == distFilter ||
+                            task.assignedToMemberName.contains(distFilter, ignoreCase = true)
+                    val matchesDate = when (dateFilter) {
+                        "TODAY" -> true
+                        else -> true
+                    }
+                    matchesTeam && matchesDist && matchesDate
+                }
+                is CurrentUserRole.Telecaller -> {
+                    task.assignedToMemberId == role.id ||
+                            task.assignedToMemberName.equals(role.name, ignoreCase = true)
+                }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Filtered Counselling Logs (Strict Team Data Isolation)
+    // Filtered Counselling Logs (Strict Distributor Isolation)
     val filteredCounsellingLogs: StateFlow<List<CounsellingLog>> = combine(
         counsellingLogs,
         currentUserRole,
-        selectedTeamFilter
-    ) { allLogs, role, teamFilter ->
+        selectedTeamFilter,
+        selectedDistributorFilter,
+        selectedDateFilter
+    ) { allLogs, role, teamFilter, distFilter, dateFilter ->
         allLogs.filter { log ->
             when (role) {
-                is CurrentUserRole.SuperAdmin -> teamFilter == null || log.teamId == teamFilter
-                is CurrentUserRole.Telecaller -> log.teamId == role.teamId
+                is CurrentUserRole.SuperAdmin -> {
+                    val matchesTeam = teamFilter == null || log.teamId == teamFilter
+                    val matchesDist = distFilter == null ||
+                            log.distributorId == distFilter ||
+                            log.recordedByMemberName.contains(distFilter, ignoreCase = true) ||
+                            log.counsellorName.contains(distFilter, ignoreCase = true)
+                    val matchesDate = when (dateFilter) {
+                        "TODAY" -> log.dateTime.contains("Today", ignoreCase = true)
+                        else -> true
+                    }
+                    matchesTeam && matchesDist && matchesDate
+                }
+                is CurrentUserRole.Telecaller -> {
+                    log.distributorId == role.id ||
+                            log.recordedByMemberName.equals(role.name, ignoreCase = true) ||
+                            log.counsellorName.equals(role.name, ignoreCase = true)
+                }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Filtered Sales Transactions (Strict Team Data Isolation)
+    // Filtered Sales Transactions (Strict Distributor Isolation)
     val filteredSalesTransactions: StateFlow<List<SalesTransaction>> = combine(
         salesTransactions,
         currentUserRole,
-        selectedTeamFilter
-    ) { allTxs, role, teamFilter ->
+        selectedTeamFilter,
+        selectedDistributorFilter,
+        selectedDateFilter
+    ) { allTxs, role, teamFilter, distFilter, dateFilter ->
         allTxs.filter { tx ->
             when (role) {
-                is CurrentUserRole.SuperAdmin -> teamFilter == null || tx.teamId == teamFilter
-                is CurrentUserRole.Telecaller -> tx.teamId == role.teamId
+                is CurrentUserRole.SuperAdmin -> {
+                    val matchesTeam = teamFilter == null || tx.teamId == teamFilter
+                    val matchesDist = distFilter == null ||
+                            tx.distributorId == distFilter ||
+                            tx.agentName.contains(distFilter, ignoreCase = true)
+                    val matchesDate = when (dateFilter) {
+                        "TODAY" -> tx.date.contains("Today", ignoreCase = true)
+                        else -> true
+                    }
+                    matchesTeam && matchesDist && matchesDate
+                }
+                is CurrentUserRole.Telecaller -> {
+                    tx.distributorId == role.id ||
+                            tx.agentName.equals(role.name, ignoreCase = true)
+                }
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    // Filtered Closure Celebrations (Strict Team Data Isolation)
+    // Filtered Closure Celebrations
     val filteredCelebrations: StateFlow<List<ClosureCelebration>> = combine(
         celebrations,
         currentUserRole,
@@ -291,7 +386,7 @@ class CrmViewModel(
         allCelebs.filter { celeb ->
             when (role) {
                 is CurrentUserRole.SuperAdmin -> teamFilter == null || celeb.teamId == teamFilter
-                is CurrentUserRole.Telecaller -> celeb.teamId == role.teamId
+                is CurrentUserRole.Telecaller -> true // Celebrations are shared on team wall
             }
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -402,6 +497,15 @@ class CrmViewModel(
         closeModal()
     }
 
+    suspend fun loginAsync(userIdInput: String, passInput: String): Pair<Boolean, String?> {
+        val result = repository.loginAsync(userIdInput, passInput)
+        if (result.first) {
+            val user = repository.currentUserRole.value
+            showSnackbar("Welcome back, ${user.displayName}!")
+        }
+        return result
+    }
+
     fun login(userIdInput: String, passInput: String): Pair<Boolean, String?> {
         val result = repository.login(userIdInput, passInput)
         if (result.first) {
@@ -411,15 +515,39 @@ class CrmViewModel(
         return result
     }
 
+    suspend fun registerDistributor(
+        email: String,
+        pass: String,
+        name: String,
+        phone: String,
+        teamId: String,
+        teamName: String
+    ): Pair<Boolean, String?> {
+        val res = repository.registerDistributor(email, pass, name, phone, teamId, teamName)
+        if (res.first) {
+            showSnackbar("Distributor account registered successfully!")
+        }
+        return res
+    }
+
     fun logout() {
         repository.logout()
         showSnackbar("Logged out successfully.")
     }
 
-    fun updateMemberCredentials(memberId: String, newUserId: String, newPass: String) {
-        repository.updateMemberCredentials(memberId, newUserId, newPass)
-        showSnackbar("Distributor login credentials updated!")
+    fun updateMemberCredentials(memberId: String, newUserId: String, newPassword: String = "") {
+        repository.updateMemberCredentials(memberId, newUserId)
+        showSnackbar("Distributor credentials updated!")
         closeModal()
+    }
+
+    fun updateAdminCredentials(currentPass: String, newAdminId: String, newName: String, newPass: String): Pair<Boolean, String?> {
+        val (success, err) = repository.updateAdminCredentials(currentPass, newAdminId, newName, newPass)
+        if (success) {
+            showSnackbar("Admin ID, Name, and Password updated successfully!")
+            closeModal()
+        }
+        return success to err
     }
 
     fun approveTransaction(txId: String) {

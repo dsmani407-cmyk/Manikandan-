@@ -36,14 +36,7 @@ fun TeamsScreen(
     var archiveFilter by remember { mutableStateOf("All") } // "All", "Active", "Archived"
 
     val displayedTeams = remember(teams, archiveFilter, currentRole) {
-        val baseTeams = if (currentRole.isSuperAdmin) {
-            teams
-        } else if (currentRole is CurrentUserRole.Telecaller) {
-            val callerTeamId = (currentRole as CurrentUserRole.Telecaller).teamId
-            teams.filter { it.id == callerTeamId }
-        } else {
-            teams
-        }
+        val baseTeams = teams
         when (archiveFilter) {
             "Active" -> baseTeams.filter { !it.isArchived }
             "Archived" -> baseTeams.filter { it.isArchived }
@@ -70,33 +63,27 @@ fun TeamsScreen(
             ) {
                 Column {
                     Text(
-                        text = if (currentRole.isSuperAdmin) "Team & Distributor Management" else "My Team & Profile",
+                        text = if (currentRole.isSuperAdmin) "Team & Distributor Management" else "Team & Distributor Directory",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (currentRole.isSuperAdmin) {
-                            "${teams.count { !it.isArchived }} active teams • ${members.size} total distributors"
-                        } else {
-                            "Assigned Team: ${(currentRole as? CurrentUserRole.Telecaller)?.teamName ?: "Active"}"
-                        },
+                        text = "${teams.count { !it.isArchived }} active teams • ${members.size} total distributors",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                if (currentRole.isSuperAdmin) {
-                    Button(
-                        onClick = { viewModel.openModal(ActiveModalDialog.AddTeam) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("btn_create_team")
-                    ) {
-                        Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("+ New Team", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    }
+                Button(
+                    onClick = { viewModel.openModal(ActiveModalDialog.AddTeam) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.testTag("btn_create_team")
+                ) {
+                    Icon(Icons.Default.GroupAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("+ New Team", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -165,7 +152,7 @@ fun TeamsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("My Login ID: ${currentMember.loginUserId}", color = Amber300, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("Account: ${currentMember.role}", color = Amber300, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                     Text("Status: Active Session", color = Emerald400, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                                 }
                                 Row(
@@ -178,20 +165,6 @@ fun TeamsScreen(
                             }
                         }
 
-                        // Confidentiality Guarantee Notice
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Default.Lock, contentDescription = null, tint = Amber400, modifier = Modifier.size(14.dp))
-                            Text(
-                                text = "🔒 Confidential: Your login credentials and details cannot be seen by other team members. Only Super Admin has all-over access.",
-                                color = Slate300,
-                                fontSize = 10.sp,
-                                lineHeight = 14.sp
-                            )
-                        }
-
                         Button(
                             onClick = { viewModel.openModal(ActiveModalDialog.EditMemberCredentials(currentMember)) },
                             colors = ButtonDefaults.buttonColors(containerColor = Indigo600),
@@ -201,46 +174,6 @@ fun TeamsScreen(
                             Icon(Icons.Default.Key, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Change My Password", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-
-        // Super Admin Access Overview Card
-        if (currentRole.isSuperAdmin) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Slate900)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Amber500),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                        }
-                        Column {
-                            Text(
-                                text = "Super Admin Exclusive Clearance",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Only admin can view all distributor login details, passwords, session histories, and edit credentials.",
-                                fontSize = 11.sp,
-                                color = Slate300
-                            )
                         }
                     }
                 }
@@ -302,6 +235,51 @@ fun TeamDirectoryCard(
     onRemoveMember: (String) -> Unit,
     onEditCredentials: (TeamMember) -> Unit = {}
 ) {
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.DeleteOutline,
+                    contentDescription = null,
+                    tint = Rose500,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(text = "Delete Team", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Are you sure you want to delete \"${team.name}\"?")
+                    Text(
+                        "This will remove the team permanently and unassign all ${members.size} team member(s).",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDeleteTeam()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Rose600)
+                ) {
+                    Text("Confirm Delete", color = Color.White)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -349,24 +327,22 @@ fun TeamDirectoryCard(
                     }
                 }
 
-                if (isSuperAdmin) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = onToggleArchive,
-                            modifier = Modifier.testTag("archive_team_${team.id}")
-                        ) {
-                            Icon(
-                                imageVector = if (team.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
-                                contentDescription = if (team.isArchived) "Unarchive Team" else "Archive Team",
-                                tint = Indigo600
-                            )
-                        }
-                        IconButton(
-                            onClick = onDeleteTeam,
-                            modifier = Modifier.testTag("delete_team_${team.id}")
-                        ) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete Team", tint = Rose500)
-                        }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onToggleArchive,
+                        modifier = Modifier.testTag("archive_team_${team.id}")
+                    ) {
+                        Icon(
+                            imageVector = if (team.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                            contentDescription = if (team.isArchived) "Unarchive Team" else "Archive Team",
+                            tint = Indigo600
+                        )
+                    }
+                    IconButton(
+                        onClick = { showDeleteConfirmation = true },
+                        modifier = Modifier.testTag("delete_team_${team.id}")
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete Team", tint = Rose500)
                     }
                 }
             }
@@ -389,13 +365,22 @@ fun TeamDirectoryCard(
                     letterSpacing = 0.5.sp
                 )
 
-                if (isSuperAdmin) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = { showDeleteConfirmation = true },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(13.dp), tint = Rose500)
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("Delete Team", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Rose500)
+                    }
+
                     TextButton(
                         onClick = onAddMember,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(14.dp), tint = Indigo600)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(13.dp), tint = Indigo600)
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text("+ Add Member", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Indigo600)
                     }
                 }
@@ -441,22 +426,20 @@ fun TeamDirectoryCard(
                                 }
 
                                 if (isSuperAdmin) {
-                                    // Admin sees full distributor login details
                                     Text(
-                                        text = "User ID: ${member.loginUserId} • ${member.role}",
+                                        text = "${member.role} • ${member.phone}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Indigo600
                                     )
                                     Text(
-                                        text = "Last login: ${member.lastLoginAt} • ${member.phone}",
+                                        text = "Last login: ${member.lastLoginAt}",
                                         fontSize = 10.sp,
                                         color = Slate500
                                     )
                                 } else if (isSelf) {
-                                    // Self sees their own login ID
                                     Text(
-                                        text = "My User ID: ${member.loginUserId} • ${member.role}",
+                                        text = "${member.role} • ${member.phone}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = Indigo600
@@ -467,23 +450,11 @@ fun TeamDirectoryCard(
                                         color = Slate400
                                     )
                                 } else {
-                                    // Other distributors' login details are completely hidden and confidential
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Lock,
-                                            contentDescription = null,
-                                            tint = Slate400,
-                                            modifier = Modifier.size(11.dp)
-                                        )
-                                        Text(
-                                            text = "${member.role} • Confidential login",
-                                            fontSize = 11.sp,
-                                            color = Slate500
-                                        )
-                                    }
+                                    Text(
+                                        text = member.role,
+                                        fontSize = 11.sp,
+                                        color = Slate500
+                                    )
                                 }
                             }
                         }

@@ -4,10 +4,12 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,6 +51,10 @@ fun DashboardScreen(
     val notifications by viewModel.notifications.collectAsState()
     val unreadCount by viewModel.unreadNotificationCount.collectAsState()
     val cacheInfo by viewModel.offlineCacheInfo.collectAsState()
+    val cloudSyncStatus by viewModel.cloudSyncStatus.collectAsState()
+    val members by viewModel.members.collectAsState()
+    val selectedDistributorFilter by viewModel.selectedDistributorFilter.collectAsState()
+    val selectedDateFilter by viewModel.selectedDateFilter.collectAsState()
 
     val totalRevenue = transactions.sumOf { it.seniorityAmount }
     val totalConversions = leads.count { it.status == LeadStatus.CONVERTED }
@@ -62,6 +68,88 @@ fun DashboardScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Supabase Central Cloud Sync Indicator
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("card_cloud_sync_status"),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Emerald300)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Emerald100),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.CloudDone,
+                                contentDescription = null,
+                                tint = Emerald700,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = "Supabase Central Database",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Slate900
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Emerald600)
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "LIVE SYNC",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                            Text(
+                                text = cloudSyncStatus.label,
+                                fontSize = 11.sp,
+                                color = Slate500
+                            )
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = { viewModel.syncFromCloud() },
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Sync Now", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
         // Offline Cache Banner for Field Sales calls
         item {
             OfflineCacheBanner(
@@ -69,6 +157,116 @@ fun DashboardScreen(
                 onSyncNow = { viewModel.syncAllToRoomCache() },
                 onToggleOfflineSimulation = { viewModel.toggleOfflineModeSimulation() }
             )
+        }
+
+        // Super Admin Central Filter Controls
+        if (role.isSuperAdmin) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("admin_oversight_card"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Indigo50),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Indigo200)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = Indigo700, modifier = Modifier.size(20.dp))
+                                Column {
+                                    Text("Super Admin Multi-Distributor Oversight", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Slate900)
+                                    Text("Viewing centralized data across all distributor phones", fontSize = 10.5.sp, color = Slate600)
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = Indigo200.copy(alpha = 0.5f))
+
+                        // Filter by Distributor
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Filter by Distributor:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate700)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = selectedDistributorFilter == null,
+                                    onClick = { viewModel.setDistributorFilter(null) },
+                                    label = { Text("All Distributors (${members.size})", fontSize = 11.sp) }
+                                )
+                                members.forEach { member ->
+                                    FilterChip(
+                                        selected = selectedDistributorFilter == member.id,
+                                        onClick = { viewModel.setDistributorFilter(member.id) },
+                                        label = { Text(member.name, fontSize = 11.sp) }
+                                    )
+                                }
+                            }
+                        }
+
+                        // Filter by Date
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("Filter by Date:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Slate700)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(
+                                    selected = selectedDateFilter == "ALL",
+                                    onClick = { viewModel.setDateFilter("ALL") },
+                                    label = { Text("All Records", fontSize = 11.sp) }
+                                )
+                                FilterChip(
+                                    selected = selectedDateFilter == "TODAY",
+                                    onClick = { viewModel.setDateFilter("TODAY") },
+                                    label = { Text("Today's Activity Only", fontSize = 11.sp) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Normal Distributor Data Isolation Callout
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Slate100),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Slate300)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = null, tint = Indigo600, modifier = Modifier.size(18.dp))
+                        Column {
+                            Text(
+                                text = "Distributor Data Isolation Active",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Slate900
+                            )
+                            Text(
+                                text = "You are viewing your private leads, counselling, and sales. Changes sync immediately to central Supabase cloud.",
+                                fontSize = 10.5.sp,
+                                color = Slate600
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         // Top Welcome Card with Live Role Info
@@ -219,26 +417,6 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("₹ Seniority", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Supabase RLS Security Architecture Viewer
-                    OutlinedButton(
-                        onClick = { viewModel.openModal(ActiveModalDialog.ViewSecurityPolicies) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Indigo200),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Indigo500.copy(alpha = 0.5f))
-                    ) {
-                        Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp), tint = Amber400)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Supabase RLS Security Policies & Storage",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
                     }
                 }
             }

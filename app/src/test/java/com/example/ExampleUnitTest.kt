@@ -94,17 +94,14 @@ class ExampleUnitTest {
     assertEquals("Call 35 Leads Quota - Completed All", editedTask?.title)
     assertEquals("Exceeded target with 6 conversions 👍", editedTask?.closingRemarks)
 
-    // Verify distributor login data confidentiality & admin credentials update
+    // Verify distributor account management & user ID update
     val member1 = repository.members.value.find { it.id == "mem-1" }
     assertNotNull(member1)
-    val originalPassword = member1!!.loginPassword
 
-    // Admin updates distributor credentials
-    repository.updateMemberCredentials("mem-1", "priya_super", "priya_secure_2026")
+    // Admin updates distributor User ID
+    repository.updateMemberCredentials("mem-1", "priya_super")
     val updatedMember = repository.members.value.find { it.id == "mem-1" }
     assertEquals("priya_super", updatedMember?.loginUserId)
-    assertEquals("priya_secure_2026", updatedMember?.loginPassword)
-    assertNotEquals(originalPassword, updatedMember?.loginPassword)
   }
 }
 
